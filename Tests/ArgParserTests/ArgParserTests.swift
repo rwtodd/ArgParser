@@ -2,24 +2,24 @@ import XCTest
 @testable import ArgParser
 
 final class ArgParserTests: XCTestCase {
-    func testFlagArg() throws {
-        let fa = FlagArg(name: "procs" , help: "the flag")
+    func testFlagParam() throws {
+        let fa = FlagParam(names: [], help: "")
         XCTAssertFalse(fa.value, "unset flag should be false")
-        try fa.process("")
+        try fa.process(param: "")
         XCTAssert(fa.value, "Set flag is true")
     }
-
-    func testIntArg() throws {
-        let ia = IntArg(name: "procs", initial: 2, help: "how many procs?") 
+    
+    func testIntParam() throws {
+        let ia = IntParam(names: [], initial: 2, help: "how many procs?")
         XCTAssertEqual(ia.value, 2, "unset flag should be the initial value")
-        try ia.process("10")
+        try ia.process(param: "abc", arg: "10")
         XCTAssertEqual(ia.value, 10, "set flag for '10' should be 10")
     }
-
-    func testStringArg() throws {
-        let sa = StringArg(name: "arg", initial: "unset", help: "a string arg")
+    
+    func testStringParam() throws {
+        let sa = StringParam(names: [], initial: "unset", help: "a string arg")
         XCTAssertEqual(sa.value, "unset", "unset value should equal the initial value")
-        try sa.process("string value")
+        try sa.process(param: "abc", arg: "string value")
         XCTAssertEqual(sa.value, "string value", "set flag should equal what we set")
     }
 }
