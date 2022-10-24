@@ -7,15 +7,15 @@ public protocol Parameter {
     func helpText() -> String
 }
 
-protocol NoArgParameter : Parameter {
+public protocol NoArgParameter : Parameter {
     func process(param: String) throws
 }
 
-protocol ArgParameter : Parameter {
+public protocol OneArgParameter : Parameter {
     func process(param: String, arg: String) throws
 }
 
-public class BaseParam<T> : ArgParameter {
+public class BasicParam<T: LosslessStringConvertible> : OneArgParameter {
     public let names: [String]
     public var value: T
     let helpStr: String
@@ -36,21 +36,16 @@ public class BaseParam<T> : ArgParameter {
         var ostr = names.map { name in
             name.count == 1 ? "-\(name)" : "--\(name)"
         }.joined(separator: "|")
-        ostr.append("  <value>\n   \(helpStr)\n")
+        ostr.append("  <\(T.self)>\n   \(helpStr)\n")
         return ostr
     }
     
     public func process(param: String, arg: String) throws {
-        guard let converted = convertArgument(arg) else {
-            throw ArgumentErrors.invalidArgument(desc: "Argument to \(param) is of the wrong type!")
+        guard let converted = T(arg) else {
+            throw ArgumentErrors.invalidArgument(desc: "Argument to param <\(param)> is not a \(T.self)!")
         }
-        guard let filtered = filterArgument(converted) else {
-            throw ArgumentErrors.invalidArgument(desc: "Argument to \(param): bad value or out of range!")
-        }
-        value = filtered
+        value = converted
     }
-    func filterArgument(_ arg: T) -> T? { arg }
-    func convertArgument(_ s: String) -> T? { fatalError("convertArgument() not implemented!") }
 }
 
 public class FlagParam: NoArgParameter {
@@ -81,38 +76,33 @@ public class FlagParam: NoArgParameter {
     }
 }
 
-public class StringParam : BaseParam<String> {
-    override func convertArgument(_ s: String) -> String?  { s }
-}
-
-public class IntParam : BaseParam<Int> {
-    override func convertArgument(_ s: String) -> Int?  { Int(s) }
-}
-
-public class RangedIntParam : IntParam {
-    private let min, max: Int
-    public init(names ns: [String], initial i: Int, min: Int, max: Int, help hs: String) {
+public class RangeLimitedParam<T: Comparable & LosslessStringConvertible> : BasicParam<T> {
+    private let min, max: T
+    public init(names ns: [String], initial i: T, min: T, max: T, help hs: String) {
         self.min = min
         self.max = max
         super.init(names: ns, initial: i, help: "\(hs) (range: \(min) to \(max))")
     }
     
-    override func filterArgument(_ arg: Int) -> Int? {
-        (arg >= min && arg <= max) ? arg : nil
+    override public func process(param: String, arg: String) throws {
+        try super.process(param: param, arg: arg)
+        if (value < min || value > max) {
+            throw ArgumentErrors.invalidArgument(desc: "Argument for param <\(param)> is not between \(min) and \(max)!")
+        }
     }
 }
 
-public class ClampedIntParam : IntParam {
-    private let min, max: Int
-    public init(names ns: [String], initial i: Int, min: Int, max: Int, help hs: String) {
+public class ClampedRangeParam<T: Comparable & LosslessStringConvertible> : BasicParam<T> {
+    private let min, max: T
+    public init(names ns: [String], initial i: T, min: T, max: T, help hs: String) {
         self.min = min
         self.max = max
-        super.init(names: ns, initial: i, help: "\(hs) (range clamped to: \(min) to \(max))")
+        super.init(names: ns, initial: i, help: "\(hs) (range clamped between: \(min) and \(max))")
     }
     
-    override func filterArgument(_ arg: Int) -> Int? {
-        if arg < min { return min }
-        else if arg > max { return max }
-        else { return arg }
+    override public func process(param: String, arg: String) throws {
+        try super.process(param: param, arg: arg)
+        if (value < min) { value = min }
+        else if value > max { value = max }
     }
 }
