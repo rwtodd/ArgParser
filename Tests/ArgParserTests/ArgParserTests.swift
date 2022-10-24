@@ -1,7 +1,7 @@
 import XCTest
 @testable import ArgParser
 
-final class ArgParserTests: XCTestCase {
+final class ParamTests: XCTestCase {
     
     func testFlagParam() throws {
         let fa = FlagParam(names: [], help: "")
@@ -66,4 +66,14 @@ final class ArgParserTests: XCTestCase {
         XCTAssertEqual(ri.value, 0, "set flag for '-2' should be clampted to 0")
     }
 
+}
+
+final class ArgParserTests : XCTestCase {
+    func testParse1() throws {
+        let p = BasicParam(names: ["p"], initial: 0, help: "number of processes")
+        let ap = ArgParser(p)
+        let extras = try ap.parseArgs(["-p","20"])
+        XCTAssertEqual(p.value, 20, "given -p 20 should set it to 20")
+        XCTAssertTrue(extras.isEmpty, "no extra arguments were given in -p 20 case")
+    }
 }

@@ -12,7 +12,9 @@ public class ArgParser {
     }
     
     /**
-     Get parameter help text.
+     Get parameter help text for the entire help spec.
+     
+     - returns: a help string suitable for output
      */
     public func argumentHelpText() -> String {
         params.map { $0.helpText() }.joined()
@@ -27,7 +29,7 @@ public class ArgParser {
     }
     
     private static func singleDashCmd(_ s: String) -> [Character]? {
-        if s.hasPrefix("-") {
+        if s.hasPrefix("-") && s.count > 1 {
             return Array(s.dropFirst(1))
         }
         return nil
@@ -41,6 +43,51 @@ public class ArgParser {
         }
         return str
     }
+
+    private func processParam(_ paramStr: String) throws {
+        guard let param = paramDict[paramStr] else {
+            throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> not found!")
+        }
+        switch param {
+        case let zeroArg as NoArgParameter:
+            try zeroArg.process(param: paramStr)
+        case is OneArgParameter:
+            throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> wasn't given arguments!")
+        default:
+            assertionFailure("parameter \(paramStr) processed but was not NoArg or OneArg!")
+        }
+    }
+    
+    private func processParam(_ paramStr: String, withIterator: inout IndexingIterator<[String]>, verbatim: inout Bool) throws {
+        guard let param = paramDict[paramStr] else {
+            throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> not found!")
+        }
+        switch param {
+        case let zeroArg as NoArgParameter:
+            try zeroArg.process(param: paramStr)
+        case let oneArg as OneArgParameter:
+            guard let arg = Self.nextArg(from: &withIterator, verbatim: &verbatim) else {
+                throw ArgumentErrors.invalidArgument(desc: "no argument provided to <\(paramStr)>!")
+            }
+            try oneArg.process(param: paramStr, arg: arg)
+        default:
+            assertionFailure("parameter \(paramStr) processed but was not NoArg or OneArg!")
+        }
+    }
+    
+    private func processParam(_ paramStr: String, withArg: String) throws {
+        guard let param = paramDict[paramStr] else {
+            throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> not found!")
+        }
+        switch param {
+        case is NoArgParameter:
+            throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> doesn't take arguments!")
+        case let oneArg as OneArgParameter:
+            try oneArg.process(param: paramStr, arg: withArg)
+        default:
+            assertionFailure("parameter \(paramStr) processed but was not NoArg or OneArg!")
+        }
+    }
     
     /**
      Parse the given `args`, setting any parameters and returning the
@@ -51,23 +98,25 @@ public class ArgParser {
         var verbatim = false
         var argIterator = args.makeIterator()
         while let arg = Self.nextArg(from: &argIterator, verbatim: &verbatim) {
-            if let dd = Self.doubleDashCmd(arg) {
+            if verbatim {
+                // verbatim arguments can't be parsed, just extras
+                extras.append(arg)
+            } else if let dd = Self.doubleDashCmd(arg) {
                 // we need to separate --param=value into (param,value), if given that way
-                //let split(separator: "=", maxSplits: 1,omittingEmptySubsequences: false)
                 if let eqSign = dd.firstIndex(of: "=") {
                     let cmd = String(dd.prefix(upTo: eqSign))
                     let cmdArg = String(dd.suffix(from: dd.index(after: eqSign)))
-                    print("got cmd <--\(cmd)> with =arg <\(cmdArg)>")
+                    try processParam(cmd, withArg: cmdArg)
                 } else {
-                    // just a cmd by itself
-                    print("got cmd <--\(dd)>")
+                    try processParam(String(dd), withIterator: &argIterator, verbatim: &verbatim)
                 }
             } else if let sd = Self.singleDashCmd(arg) {
-                for cmd in sd {
-                    print("got cmd <-\(cmd)>")
+                // all the elements except the first must be NoArg...
+                for cmd in sd.dropLast() {
+                    try processParam(String(cmd))
                 }
+                try processParam(String(sd.last!), withIterator: &argIterator, verbatim: &verbatim)
             } else {
-                // it must be an extra argument
                 extras.append(arg)
             }
         }
