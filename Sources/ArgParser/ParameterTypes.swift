@@ -1,29 +1,81 @@
+/**
+ Failure to parse or interpret command-line arguments should result in `ArgumentErrors`.
+ */
 public enum ArgumentErrors : Error {
     case invalidArgument(desc: String)
 }
 
+/**
+ Parameter is the base of the two main protocols, ``NoArgParameter`` and ``OneArgParameter``.
+ 
+ All actual parameters should implement one of those two protocols.  Implementing just plain `Parameter` allows
+ a class to get on the spec list of ``ArgParser``, which could control the formatting of the help text.
+ */
 public protocol Parameter {
-    func addToDict(_ : inout [String:Parameter])
+    /**
+     Add any names by which this parameter wants to process arguments to the given dictionary.
+     
+     - parameter dict:  the dictionary of parameter names
+     - returns: None
+     */
+    func addToDict(_ dict: inout [String:Parameter])
+    /**
+     Return the help text for this parameter.
+     
+     - returns: a string of help text
+     */
     func helpText() -> String
 }
 
+/** This protocol is for zero-arg parameters (like plain "flag" switches. */
 public protocol NoArgParameter : Parameter {
+   
+    /**
+     Process a parameter with no arguments.
+     
+     - parameter param: the string under which this parameter was called.
+     - throws: ``ArgumentErrors`` if there is a problem with the argument.
+     - returns: None
+     */
     func process(param: String) throws
 }
 
+/** This protocol is for one-arg parameters on the command line (e.g., --procs 3) */
 public protocol OneArgParameter : Parameter {
+    /**
+     Process a parameter with one argument.
+     
+     - Parameter param: the string under which this parameter was called.
+     - Parameter arg: the argument given to the parameter, as a String.
+     - throws: ``ArgumentErrors`` if there is a problem with the argument.
+     - returns: None
+     */
     func process(param: String, arg: String) throws
 }
 
+/**
+ A typical parameter, with one or more names.
+ */
 public class BasicParam<T: LosslessStringConvertible> : OneArgParameter {
-    public let names: [String]
-    public var value: T
-    let helpStr: String
+    private let names: [String]
+    private let helpStr: String
+
+    /**
+     The current value of the parameter.
+     */
+    public internal(set) var value: T
     
-    public init(names ns: [String], initial i: T, help hs: String) {
-        names = ns
-        value = i
-        helpStr = hs
+    /**
+     Creates a parameter.
+     
+     - Parameter names: an array of names by which this `BasicParam` is referenced
+     - Parameter initial: the initial (default) value of the parameter.
+     - Parameter help: the help description of this parameter
+     */
+    public init(names: [String], initial: T, help: String) {
+        self.names = names
+        value = initial
+        helpStr = help
     }
     
     public func addToDict(_ dict: inout [String : Parameter]) {
@@ -48,13 +100,15 @@ public class BasicParam<T: LosslessStringConvertible> : OneArgParameter {
     }
 }
 
+/** A typical cmdline flag (which takes no arguments). */
 public class FlagParam: NoArgParameter {
-    public var value: Bool = false
-    let names: [String]
-    let helpStr: String
-    public init(names ns: [String],  help hs: String) {
-        names = ns
-        helpStr = hs
+    public internal(set) var value: Bool = false
+    private let names: [String]
+    private let helpStr: String
+    
+    public init(names: [String],  help: String) {
+        self.names = names
+        helpStr = help
     }
     
     public func addToDict(_ dict: inout [String : Parameter]) {
