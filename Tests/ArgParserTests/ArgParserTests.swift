@@ -76,4 +76,57 @@ final class ArgParserTests : XCTestCase {
         XCTAssertEqual(p.value, 20, "given -p 20 should set it to 20")
         XCTAssertTrue(extras.isEmpty, "no extra arguments were given in -p 20 case")
     }
+
+    func testParse2() throws {
+        let p = BasicParam(names: ["parse"], initial: "cee", help: "language to parse")
+        let ap = ArgParser(p)
+        var extras = try ap.parseArgs(["--parse=awk"])
+        XCTAssertEqual(p.value, "awk", "given --parse=awk should set it to awk")
+        XCTAssertTrue(extras.isEmpty, "no extra arguments were given in --parse=awk case")
+        extras = try ap.parseArgs(["--parse","bash"])
+        XCTAssertEqual(p.value, "bash", "given --parse bash should set it to bash")
+        XCTAssertTrue(extras.isEmpty, "no extra arguments were given in --parse=awk case")
+    }
+
+    func testParse3() throws {
+        let p = BasicParam(names: ["procs", "p"], initial: 0, help: "number of processes")
+        let v = FlagParam(names: ["verbose", "v"], help: "verbose mode")
+        let ap = ArgParser(p,v)
+        let extras = try ap.parseArgs(["-vp","20"])
+        XCTAssertEqual(p.value, 20, "given -p 20 should set it to 20")
+        XCTAssertTrue(v.value, "given -v should set it to true")
+        XCTAssertTrue(extras.isEmpty, "no extra arguments were given in -vp 20 case")
+    }
+
+    func testParse4() throws {
+        let p = BasicParam(names: ["procs", "p"], initial: 0, help: "number of processes")
+        let v = FlagParam(names: ["verbose", "v"], help: "verbose mode")
+        let ap = ArgParser(p,v)
+        let extras = try ap.parseArgs(["-vp", "--", "620", "--procs"])
+        XCTAssertEqual(p.value, 620, "given -p 620 should set it to 620")
+        XCTAssertTrue(v.value, "given -v should set it to true")
+        XCTAssertEqual(extras, ["--procs"], "extra arguments were given in -vp -- 620 --procs case")
+    }
+
+    func testParse5() throws {
+        let p = BasicParam(names: ["procs", "p"], initial: 0, help: "number of processes")
+        let v = FlagParam(names: ["verbose", "v"], help: "verbose mode")
+        let ap = ArgParser(p,v)
+        let args = ["--", "-vp", "--", "620", "--procs"]
+        let extras = try ap.parseArgs(args)
+        XCTAssertEqual(p.value, 0, "-p should still have default")
+        XCTAssertFalse(v.value, "-v should till have default")
+        XCTAssertEqual(extras, Array(args.dropFirst()), "all args were verbatim")
+    }
+
+    func testParse6() throws {
+        let p = BasicParam(names: ["procs", "p"], initial: 0, help: "number of processes")
+        let v = FlagParam(names: ["verbose", "v"], help: "verbose mode")
+        let ap = ArgParser(p,v)
+        let extras = try ap.parseArgs(["-v", "-"])
+        XCTAssertEqual(p.value, 0, "-p should still be default")
+        XCTAssertTrue(v.value, "given -v should set it to true")
+        XCTAssertEqual(extras, ["-"], "extra arguments '-' should be there")
+    }
+
 }
