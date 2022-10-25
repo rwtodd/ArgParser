@@ -130,6 +130,9 @@ public class FlagParam: NoArgParameter {
     }
 }
 
+/**
+ A parameter limited by a user-defined range (inclusive).
+ */
 public class RangeLimitedParam<T: Comparable & LosslessStringConvertible> : BasicParam<T> {
     private let min, max: T
     public init(names ns: [String], initial i: T, min: T, max: T, help hs: String) {
@@ -138,6 +141,14 @@ public class RangeLimitedParam<T: Comparable & LosslessStringConvertible> : Basi
         super.init(names: ns, initial: i, help: "\(hs) (range: \(min) to \(max))")
     }
     
+    /**
+     Process a parameter with one argument.
+     
+     - Parameter param: the string under which this parameter was called.
+     - Parameter arg: the argument given to the parameter, as a String.
+     - throws: ``ArgumentErrors`` if there is a problem with the argument.
+     - returns: None
+     */
     override public func process(param: String, arg: String) throws {
         try super.process(param: param, arg: arg)
         if (value < min || value > max) {
@@ -146,6 +157,9 @@ public class RangeLimitedParam<T: Comparable & LosslessStringConvertible> : Basi
     }
 }
 
+/**
+ A parameter clamoed to a user-defined range (inclusive).
+ */
 public class ClampedRangeParam<T: Comparable & LosslessStringConvertible> : BasicParam<T> {
     private let min, max: T
     public init(names ns: [String], initial i: T, min: T, max: T, help hs: String) {
@@ -154,6 +168,14 @@ public class ClampedRangeParam<T: Comparable & LosslessStringConvertible> : Basi
         super.init(names: ns, initial: i, help: "\(hs) (range clamped between: \(min) and \(max))")
     }
     
+    /**
+     Process a parameter with one argument.
+     
+     - Parameter param: the string under which this parameter was called.
+     - Parameter arg: the argument given to the parameter, as a String.
+     - throws: ``ArgumentErrors`` if there is a problem with the argument.
+     - returns: None
+     */
     override public func process(param: String, arg: String) throws {
         try super.process(param: param, arg: arg)
         if (value < min) { value = min }
