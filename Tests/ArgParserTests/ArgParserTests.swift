@@ -112,11 +112,11 @@ final class ArgParserTests : XCTestCase {
         let p = BasicParam(names: ["procs", "p"], initial: 0, help: "number of processes")
         let v = FlagParam(names: ["verbose", "v"], help: "verbose mode")
         let ap = ArgParser(p,v)
-        let args = ["--", "-vp", "--", "620", "--procs"]
-        let extras = try ap.parseArgs(args)
+        let args = ["cmdname", "--", "-vp", "--", "620", "--procs"]
+        let extras = try ap.parseArgs(args.dropFirst())
         XCTAssertEqual(p.value, 0, "-p should still have default")
         XCTAssertFalse(v.value, "-v should till have default")
-        XCTAssertEqual(extras, Array(args.dropFirst()), "all args were verbatim")
+        XCTAssertEqual(extras, Array(args.dropFirst(2)), "all args were verbatim")
     }
 
     func testParse6() throws {

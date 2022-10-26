@@ -1,4 +1,29 @@
 public class ArgParser {
+    
+    /**
+     A helper struct to track the verbatim state of arguments as they are iterated.
+     
+     It follows the `IteratorProtocol` but doesn't declare such because it is only used inside this class.
+     */
+    private struct ArgIterator<T: IteratorProtocol> where T.Element == String {
+        private var iterator : T
+        private(set) var verbatim : Bool
+        
+        init(iterator: T) {
+            self.iterator = iterator
+            self.verbatim = false
+        }
+        
+        mutating func next() -> String? {
+            let str = iterator.next()
+            if !verbatim && str == "--" {
+                verbatim = true
+                return iterator.next()
+            }
+            return str
+        }
+    }
+    
     private let params : [Parameter]
     private let paramDict : [String: Parameter]
     
@@ -35,15 +60,6 @@ public class ArgParser {
         return nil
     }
     
-    private static func nextArg(from lst: inout IndexingIterator<[String]>, verbatim: inout Bool) -> String? {
-        let str = lst.next()
-        if !verbatim && str == "--" {
-            verbatim = true
-            return lst.next()
-        }
-        return str
-    }
-
     private func processParam(_ paramStr: String) throws {
         guard let param = paramDict[paramStr] else {
             throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> not found!")
@@ -58,7 +74,7 @@ public class ArgParser {
         }
     }
     
-    private func processParam(_ paramStr: String, withIterator: inout IndexingIterator<[String]>, verbatim: inout Bool) throws {
+    private func processParam<T>(_ paramStr: String, withIterator: inout ArgIterator<T>) throws {
         guard let param = paramDict[paramStr] else {
             throw ArgumentErrors.invalidArgument(desc: "parameter <\(paramStr)> not found!")
         }
@@ -66,7 +82,7 @@ public class ArgParser {
         case let zeroArg as NoArgParameter:
             try zeroArg.process(param: paramStr)
         case let oneArg as OneArgParameter:
-            guard let arg = Self.nextArg(from: &withIterator, verbatim: &verbatim) else {
+            guard let arg = withIterator.next() else {
                 throw ArgumentErrors.invalidArgument(desc: "no argument provided to <\(paramStr)>!")
             }
             try oneArg.process(param: paramStr, arg: arg)
@@ -93,12 +109,11 @@ public class ArgParser {
      Parse the given `args`, setting any parameters and returning the
      list of extra arguments not associated with parameters.
      */
-    public func parseArgs(_ args: [String]) throws -> [String] {
+    public func parseArgs<T: Sequence>(_ args: T) throws -> [String] where T.Iterator.Element == String {
         var extras : [String] = []
-        var verbatim = false
-        var argIterator = args.makeIterator()
-        while let arg = Self.nextArg(from: &argIterator, verbatim: &verbatim) {
-            if verbatim {
+        var argIterator = ArgIterator(iterator: args.makeIterator())
+        while let arg = argIterator.next() {
+            if argIterator.verbatim {
                 // verbatim arguments can't be parsed, just extras
                 extras.append(arg)
             } else if let dd = Self.doubleDashCmd(arg) {
@@ -108,14 +123,14 @@ public class ArgParser {
                     let cmdArg = String(dd.suffix(from: dd.index(after: eqSign)))
                     try processParam(cmd, withArg: cmdArg)
                 } else {
-                    try processParam(String(dd), withIterator: &argIterator, verbatim: &verbatim)
+                    try processParam(String(dd), withIterator: &argIterator)
                 }
             } else if let sd = Self.singleDashCmd(arg) {
                 // all the elements except the first must be NoArg...
                 for cmd in sd.dropLast() {
                     try processParam(String(cmd))
                 }
-                try processParam(String(sd.last!), withIterator: &argIterator, verbatim: &verbatim)
+                try processParam(String(sd.last!), withIterator: &argIterator)
             } else {
                 extras.append(arg)
             }
