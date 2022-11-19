@@ -5,7 +5,7 @@ public class ArgParser {
      
      It follows the `IteratorProtocol` but doesn't declare such because it is only used inside this class.
      */
-    private struct ArgIterator<T: IteratorProtocol> where T.Element == String {
+    private struct ArgIterator<T: IteratorProtocol<String>> {
         private var iterator : T
         private(set) var verbatim : Bool
         
@@ -109,7 +109,7 @@ public class ArgParser {
      Parse the given `args`, setting any parameters and returning the
      list of extra arguments not associated with parameters.
      */
-    public func parseArgs<T: Sequence>(_ args: T) throws -> [String] where T.Iterator.Element == String {
+    public func parseArgs(_ args: some Sequence<String>) throws -> [String] {
         var extras : [String] = []
         var argIterator = ArgIterator(iterator: args.makeIterator())
         while let arg = argIterator.next() {

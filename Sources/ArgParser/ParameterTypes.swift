@@ -27,6 +27,25 @@ public protocol Parameter {
     func helpText() -> String
 }
 
+public extension Parameter {
+    /** 
+     Give a standard depiction of a Sequence of parameter names.
+     */
+    static func formatHelpNames(_ names: some Sequence<String>) -> String {
+        names.map { name in
+            name.count == 1 ? "-\(name)" : "--\(name)"
+        }.joined(separator: " | ")
+    }
+
+    /**
+     Give a standard depiction of a parameter, with one line of names and one
+     line of description.
+     */
+    static func formatTypicalHelp(names: String, desc: String) -> String {
+        "\(names)\n   \(desc)\n"
+    }
+}
+
 /** This protocol is for zero-arg parameters (like plain "flag" switches. */
 public protocol NoArgParameter : Parameter {
    
@@ -50,7 +69,7 @@ public protocol OneArgParameter : Parameter {
      - throws: ``ArgumentErrors`` if there is a problem with the argument.
      - returns: None
      */
-    func process(param: String, arg: String) throws
+    func process(param: String, arg: String) throws 
 }
 
 /**
@@ -85,11 +104,24 @@ public class BasicParam<T: LosslessStringConvertible> : OneArgParameter {
     }
     
     public func helpText() -> String {
-        var ostr = names.map { name in
-            name.count == 1 ? "-\(name)" : "--\(name)"
-        }.joined(separator: "|")
-        ostr.append("  <\(T.self)>\n   \(helpStr)\n")
-        return ostr
+        var hnames = Self.formatHelpNames(names)
+        var helpStart = helpStr.startIndex
+        if helpStr.count > 3 && helpStr[helpStart] == ("<" as Character) {
+            let tnameStart = helpStr.index(after: helpStart)
+            helpStart = helpStr.firstIndex(of: ">") ?? helpStr.index(after:tnameStart)
+            hnames.append("  <\(helpStr[tnameStart..<helpStart])>")
+            helpStr.formIndex(after: &helpStart)
+            // skip any whitespace ... poor man's .trimLeft() !!
+            while (helpStart != helpStr.endIndex) && (helpStr[helpStart] == " ") {
+                helpStr.formIndex(after: &helpStart)
+            }
+        } else {
+            hnames.append("  <\(T.self)>")
+        }
+        return Self.formatTypicalHelp(
+            names: hnames, 
+            desc: (helpStart == helpStr.startIndex) ? helpStr 
+                                                    : String(helpStr.suffix(from: helpStart)))
     }
     
     public func process(param: String, arg: String) throws {
@@ -118,11 +150,8 @@ public class FlagParam: NoArgParameter {
     }
     
     public func helpText() -> String {
-        var ostr = names.map { name in
-            name.count == 1 ? "-\(name)" : "--\(name)"
-        }.joined(separator: "|")
-        ostr.append("\n   \(helpStr)\n")
-        return ostr
+        let hnames = Self.formatHelpNames(names)
+        return Self.formatTypicalHelp(names: hnames, desc: helpStr)
     }
     
     public func process(param: String) throws {
