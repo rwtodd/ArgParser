@@ -66,6 +66,14 @@ final class ParamTests: XCTestCase {
         XCTAssertEqual(ri.value, 0, "set flag for '-2' should be clampted to 0")
     }
 
+    func testAccumulatingParams() throws {
+        let ap = AccumulatingParam(names: ["name"], initial: 0, help: "well hello there")
+        XCTAssertEqual(ap.value, 0, "unset param should be zero")
+        try ap.process(param: "name")
+        XCTAssertEqual(ap.value, 1, "should increment")
+        try ap.process(param: "name")
+        XCTAssertEqual(ap.value, 2, "should increment")
+    }
 }
 
 final class ArgParserTests : XCTestCase {

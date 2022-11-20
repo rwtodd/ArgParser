@@ -159,6 +159,38 @@ public class FlagParam: NoArgParameter {
     }
 }
 
+/** Accumulating cmdline flag (counts the number of times it's been seen). */
+public class AccumulatingParam: NoArgParameter {
+    public internal(set) var value: Int = 0
+    private let names: [String]
+    private let helpStr: String
+        
+    public init(names: [String], initial: Int, help: String) {
+        self.names = names
+        value = initial
+        helpStr = help
+    }
+    
+    public convenience init(names: [String],  help: String) {
+        self.init(names: names, initial: 0, help: help)
+    }
+
+    public func addToDict(_ dict: inout [String : Parameter]) {
+        for name in names {
+            dict[name] = self
+        }
+    }
+    
+    public func helpText() -> String {
+        let hnames = Self.formatHelpNames(names)
+        return Self.formatTypicalHelp(names: hnames, desc: helpStr)
+    }
+    
+    public func process(param: String) throws {
+        value += 1
+    }
+}
+
 /**
  A parameter limited by a user-defined range (inclusive).
  */
@@ -187,7 +219,7 @@ public class RangeLimitedParam<T: Comparable & LosslessStringConvertible> : Basi
 }
 
 /**
- A parameter clamoed to a user-defined range (inclusive).
+ A parameter clamped to a user-defined range (inclusive).
  */
 public class ClampedRangeParam<T: Comparable & LosslessStringConvertible> : BasicParam<T> {
     private let min, max: T
