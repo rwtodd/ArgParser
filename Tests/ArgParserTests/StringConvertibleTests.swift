@@ -101,6 +101,26 @@ final class YMDArgTests : XCTestCase {
         XCTAssertEqual(da!.value.date, today)
     }
     
+    func testTPlusTMinusDates() throws {
+        var dc = Calendar.current.dateComponents([.year,.month,.day], from: Date())
+        try da!.process(param: "da", arg: "t")
+        XCTAssertEqual(da!.value, YMDArg(year: dc.year!, month: dc.month!, day: dc.day!))
+
+        try da!.process(param: "da", arg: "t+0")
+        XCTAssertEqual(da!.value, YMDArg(year: dc.year!, month: dc.month!, day: dc.day!))
+
+        try da!.process(param: "da", arg: "t-0")
+        XCTAssertEqual(da!.value, YMDArg(year: dc.year!, month: dc.month!, day: dc.day!))
+        
+        dc = Calendar.current.dateComponents([.year,.month,.day], from: Calendar.current.date(byAdding: .day, value: 5, to: Date())!)
+        try da!.process(param: "da", arg: "t+5")
+        XCTAssertEqual(da!.value, YMDArg(year: dc.year!, month: dc.month!, day: dc.day!))
+
+        dc = Calendar.current.dateComponents([.year,.month,.day], from: Calendar.current.date(byAdding: .day, value: -5, to: Date())!)
+        try da!.process(param: "da", arg: "t-5")
+        XCTAssertEqual(da!.value, YMDArg(year: dc.year!, month: dc.month!, day: dc.day!))
+    }
+    
     func testSimpleDates() throws {
         try da!.process(param: "da", arg: "2011-01-01")
         XCTAssertEqual(da!.value, YMDArg(year: 2011, month: 1, day: 1)!)

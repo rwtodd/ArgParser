@@ -65,17 +65,30 @@ public struct YMDArg : LosslessStringConvertible, Comparable {
     public init?(_ description: String) {
         let calendar = Calendar.current
         let now = Date()
+        // Assume it's a yyyy-mm-dd format, but try special cases if it doesn't 'parse':
         let parts = description.split(separator: "-").map { Int($0) }
         guard !parts.contains(nil) else {
-            switch description.lowercased() {
-            case "yesterday":
-                date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now)!)
-            case "today":
-                date = calendar.startOfDay(for: now)
-            case "tomorrow":
-                date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: now)!)
-            default:
-                return nil
+            let lcased = description.lowercased()
+            if lcased.hasPrefix("t+") {
+                if let days = Int(lcased.suffix(from: lcased.index(lcased.startIndex,offsetBy: 2))) {
+                    date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: days, to: now)!)
+                } else { return nil }
+            } else if lcased.hasPrefix("t-") {
+                if let days = Int(lcased.suffix(from: lcased.index(lcased.startIndex,offsetBy: 2))) {
+                    date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -days, to: now)!)
+                } else { return nil }
+            } else {
+                switch lcased {
+                case "yesterday":
+                    date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now)!)
+                case "t": fallthrough
+                case "today":
+                    date = calendar.startOfDay(for: now)
+                case "tomorrow":
+                    date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: now)!)
+                default:
+                    return nil
+                }
             }
             return
         }
